@@ -1,0 +1,62 @@
+# --- секреты (не должны попасть в образ) ---
+.env
+.env.*
+!.env.example
+
+# --- VCS ---
+.git
+.gitignore
+.gitattributes
+
+# --- Python cache / артефакты ---
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv
+venv
+env
+*.egg-info
+dist
+build
+
+# --- тесты / линтеры (не нужны в рантайме) ---
+tests
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# --- документация / репо-уровневое ---
+docs
+README.md
+*.md
+!app/**/*.md
+
+# --- Claude Code / скиллы / метаданные репо ---
+.claude
+skills-lock.json
+CLAUDE.md
+
+# --- редакторы / ОС ---
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- локальные данные и логи ---
+*.log
+logs
+pgdata
+data
+
+# --- docker / CI ---
+Dockerfile
+docker-compose.yml
+.dockerignore
+.github
+.gitlab-ci.yml

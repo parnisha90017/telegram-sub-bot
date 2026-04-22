@@ -1,0 +1,7 @@
+aiogram>=3.4,<4
+aiocryptopay>=0.3.1
+asyncpg>=0.29
+aiohttp>=3.9
+APScheduler>=3.10
+pydantic>=2.5
+pydantic-settings>=2.1

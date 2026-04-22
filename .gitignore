@@ -1,0 +1,46 @@
+# --- секреты ---
+.env
+.env.*
+!.env.example
+
+# --- Claude Code / скиллы / метаданные ---
+.claude/
+CLAUDE.md
+skills-lock.json
+
+# --- одноразовые локальные скрипты (могут содержать креды) ---
+_*.py
+
+# --- Python артефакты ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# --- тесты / линтеры ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- редакторы / ОС ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- локальные данные и логи ---
+*.log
+logs/
+pgdata/
+data/
