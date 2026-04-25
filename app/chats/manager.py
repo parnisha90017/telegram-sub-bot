@@ -9,6 +9,7 @@ from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, Teleg
 
 from app.bot.texts import PAID_WITH_LINKS
 from app.config import settings
+from app.db.queries import grant_access
 
 log = logging.getLogger(__name__)
 
@@ -53,7 +54,20 @@ async def unban_from_all_chats(bot: Bot, telegram_id: int) -> None:
         await asyncio.sleep(0.1)
 
 
-async def issue_invite_links_and_send(bot: Bot, telegram_id: int) -> None:
+async def issue_invite_links_and_send(
+    bot: Bot,
+    telegram_id: int,
+    paid_until: datetime,
+) -> None:
+    """Создаёт invite-ссылки во всех 4 чатах с creates_join_request=True,
+    регистрирует каждую в granted_access (привязка к покупателю), затем
+    отправляет ссылки в ЛС покупателя.
+
+    member_limit при creates_join_request=True указывать НЕЛЬЗЯ — Telegram
+    отвергает (см. Bot API: "If creates_join_request is True, member_limit
+    can't be specified"). Защита от перепродажи доступа теперь в
+    ChatJoinRequest-handler'е (см. app/bot/handlers/join_request.py).
+    """
     expire_at = datetime.now(timezone.utc) + timedelta(hours=1)
     links: list[str] = []
 
@@ -62,11 +76,25 @@ async def issue_invite_links_and_send(bot: Bot, telegram_id: int) -> None:
             link = await bot.create_chat_invite_link(
                 chat_id=chat_id,
                 expire_date=expire_at,
-                member_limit=1,
+                creates_join_request=True,
+                name=f"sub_{telegram_id}_{int(expire_at.timestamp())}",
             )
-            links.append(link.invite_link)
         except Exception as e:
             log.error("create_chat_invite_link for chat=%s failed: %s", chat_id, e)
+            continue
+
+        try:
+            await grant_access(telegram_id, chat_id, link.invite_link, paid_until)
+        except Exception as e:
+            log.error(
+                "grant_access for tg=%s chat=%s link=%s failed: %s",
+                telegram_id, chat_id, link.invite_link, e,
+            )
+            # Не отдаём ссылку юзеру: без записи в granted_access
+            # join-request будет declined.
+            continue
+
+        links.append(link.invite_link)
 
     if not links:
         log.error("no invite links generated for tg=%s", telegram_id)

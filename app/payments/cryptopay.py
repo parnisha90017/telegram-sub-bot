@@ -12,11 +12,19 @@ def build_client() -> AioCryptoPay:
 
 
 def encode_payload(telegram_id: int, plan_key: str) -> str:
-    return f"{telegram_id}:{plan_key}"
+    """Используется как order_id для платёжного провайдера и payload в CryptoBot.
+    Heleket валидирует order_id по alpha_dash (`[A-Za-z0-9_-]`), поэтому
+    разделитель — `_`, а не `:`."""
+    return f"{telegram_id}_{plan_key}"
 
 
 def decode_payload(payload: str) -> tuple[int, str]:
-    tg_id_str, plan_key = payload.split(":", 1)
+    """Парсит '<tg>_<plan>' (новый формат) или '<tg>:<plan>' (legacy, до фикса
+    alpha_dash). plan_key сам содержит `_` (например 'tariff_3d'), поэтому
+    при выборе разделителя сначала проверяем `:` (legacy маркер): он встречается
+    только как разделитель, тогда как `_` входит и в plan_key."""
+    sep = ":" if ":" in payload else "_"
+    tg_id_str, plan_key = payload.split(sep, 1)
     return int(tg_id_str), plan_key
 
 

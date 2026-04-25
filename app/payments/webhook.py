@@ -20,7 +20,10 @@ def register_cryptopay_handlers(crypto: AioCryptoPay, bot: Bot) -> None:
         invoice_id = str(invoice.invoice_id)
 
         if getattr(invoice, "status", None) != "paid":
-            log.info("invoice %s arrived with status=%s — skipping", invoice_id, invoice.status)
+            log.info(
+                "invoice %s arrived with status=%s — skipping",
+                invoice_id, invoice.status,
+            )
             return
 
         try:
@@ -29,11 +32,20 @@ def register_cryptopay_handlers(crypto: AioCryptoPay, bot: Bot) -> None:
             log.error("invoice %s has unparseable amount %r", invoice_id, invoice.amount)
             return
 
-        telegram_id = await process_paid_invoice(invoice_id, webhook_amount)
-        if telegram_id is None:
-            log.info("invoice %s: no-op (unknown / already paid / amount mismatch)", invoice_id)
+        payment = await process_paid_invoice(
+            provider="cryptobot",
+            payment_id=invoice_id,
+            webhook_amount=webhook_amount,
+        )
+        if payment is None:
+            log.info(
+                "invoice %s: no-op (unknown / already paid / amount mismatch)",
+                invoice_id,
+            )
             return
 
+        telegram_id = payment["telegram_id"]
+        paid_until = payment["paid_until"]
         log.info("invoice %s: subscription extended for tg=%s", invoice_id, telegram_id)
         await unban_from_all_chats(bot, telegram_id)
-        await issue_invite_links_and_send(bot, telegram_id)
+        await issue_invite_links_and_send(bot, telegram_id, paid_until)
