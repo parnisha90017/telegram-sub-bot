@@ -125,19 +125,16 @@ async def test_on_pay_creates_invoice_via_chosen_provider():
     with patch(
         "app.bot.handlers.payment.upsert_user", new=AsyncMock(),
     ), patch(
-        "app.bot.handlers.payment.find_active_pending_payment",
-        new=AsyncMock(return_value=None),
-    ), patch(
-        "app.bot.handlers.payment.find_expired_pending_payment",
-        new=AsyncMock(return_value=None),
-    ), patch(
         "app.bot.handlers.payment.upsert_pending_payment",
         new=AsyncMock(return_value="https://pay.heleket/abc"),
     ) as m_upsert:
         await on_pay(cq, providers)
 
-    # Heleket was called, CryptoBot was not.
+    # Heleket was called (с is_refresh=True — always-refresh стратегия),
+    # CryptoBot — нет.
     heleket_provider.create_invoice.assert_awaited_once()
+    _, hk = heleket_provider.create_invoice.await_args
+    assert hk.get("is_refresh") is True
     cryptobot_provider.create_invoice.assert_not_awaited()
     # And persisted with provider="heleket".
     m_upsert.assert_awaited_once()
