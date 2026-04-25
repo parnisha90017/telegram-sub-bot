@@ -128,6 +128,9 @@ async def test_on_pay_creates_invoice_via_chosen_provider():
         "app.bot.handlers.payment.find_active_pending_payment",
         new=AsyncMock(return_value=None),
     ), patch(
+        "app.bot.handlers.payment.find_expired_pending_payment",
+        new=AsyncMock(return_value=None),
+    ), patch(
         "app.bot.handlers.payment.upsert_pending_payment",
         new=AsyncMock(return_value="https://pay.heleket/abc"),
     ) as m_upsert:

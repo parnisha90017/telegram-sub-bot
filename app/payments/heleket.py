@@ -55,8 +55,16 @@ class HeleketProvider(PaymentProvider):
         amount_usd: float,
         order_id: str,
         description: str = "",
+        is_refresh: bool = False,
     ) -> Invoice:
-        body = {
+        """is_refresh=True — Heleket-специфика: для уже существующего инвойса
+        с этим order_id обновит address + expired_at, оставит uuid и URL.
+        Используется когда наш pending старше TTL (1ч): создавать новый
+        нельзя (Heleket вернёт тот же uuid с протухшим адресом), а refresh
+        даёт юзеру рабочий QR без плодления записей в БД.
+        Не Heleket-провайдеры этот параметр не понимают — handler гейтит
+        вызов проверкой provider_code == "heleket"."""
+        body: dict = {
             "amount": f"{amount_usd:.2f}",
             "currency": "USDT",
             "network": "tron",
@@ -64,6 +72,8 @@ class HeleketProvider(PaymentProvider):
             "url_callback": self.callback_url,
             "lifetime": 3600,
         }
+        if is_refresh:
+            body["is_refresh"] = True
         # Serialize ONCE, then hash-and-send the same bytes. Using json=body
         # lets aiohttp re-serialize with its own separators/escape rules, which
         # produces a different byte stream than what we hashed → Heleket

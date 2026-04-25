@@ -105,6 +105,64 @@ async def find_active_pending_payment(
     return dict(row) if row else None
 
 
+async def find_expired_pending_payment(
+    telegram_id: int,
+    plan: str,
+    provider: str,
+    max_age_seconds: int = 3600,
+) -> Optional[dict[str, Any]]:
+    """Возвращает ИСТЁКШУЮ pending-запись (created_at <= NOW() - max_age) для
+    этой пары юзер+план+провайдер. Используется в шаге 2 on_pay для refresh
+    через Heleket is_refresh=True: у Heleket TTL инвойса = 1ч, после чего
+    адрес мёртвый, но через is_refresh можно обновить адрес/expired_at без
+    создания нового uuid.
+
+    Верхней границы по возрасту нет — refresh применим к любому возрасту
+    старше TTL. pay_url IS NOT NULL — если ссылки нет (legacy до миграции),
+    refresh не выручит, идём на шаг 3 (новый createInvoice + upsert).
+    """
+    pool = get_pool()
+    row = await pool.fetchrow(
+        """
+        SELECT id, payment_id, pay_url, created_at
+          FROM payments
+         WHERE telegram_id = $1
+           AND plan = $2
+           AND provider = $3
+           AND status = 'pending'
+           AND pay_url IS NOT NULL
+           AND created_at <= NOW() - make_interval(secs => $4)
+         ORDER BY created_at DESC
+         LIMIT 1
+        """,
+        telegram_id, plan, provider, max_age_seconds,
+    )
+    return dict(row) if row else None
+
+
+async def mark_pending_refreshed(
+    provider: str,
+    payment_id: str,
+    pay_url: str,
+) -> None:
+    """UPDATE pay_url + created_at = NOW() для существующей pending-записи.
+    Вызывается ПОСЛЕ удачного refresh-вызова к провайдеру (Heleket
+    is_refresh=True): pay_url формально не меняется, но обновим на всякий
+    случай, а created_at сдвигаем — чтобы find_active_pending_payment
+    подхватил эту запись на следующих кликах в течение нового TTL.
+    """
+    pool = get_pool()
+    await pool.execute(
+        """
+        UPDATE payments
+           SET pay_url = $3,
+               created_at = NOW()
+         WHERE provider = $1 AND payment_id = $2
+        """,
+        provider, payment_id, pay_url,
+    )
+
+
 PLAN_DAYS: dict[str, int] = {"tariff_3d": 3, "tariff_7d": 7, "tariff_30d": 30}
 
 
